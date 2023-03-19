@@ -86,7 +86,7 @@ async function clientFetch(method, route, params, headers, body) {
 	}
 
 	const url = makeURL(route, params)
-	const res = await fetch(url, init)
+	const res = await fetch(process.env.API_URL || '' + url, init)
 	if (
 		res.status !== StatusCodes.OK &&
 		res.status !== StatusCodes.NOT_MODIFIED
