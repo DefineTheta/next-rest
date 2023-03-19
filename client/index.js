@@ -10,24 +10,14 @@ export class ClientError extends Error {
 const optionalRestComponentPattern = /\[\[\.\.\.(.+)\]\]^$/
 const restComponentPattern = /\[\.\.\.(.+)\]^$/
 const componentPattern = /^\[(.+)\]$/
+const queryComponentPattern = /^(\[*[A-Za-z]+\]*)\?\{([A-Za-z0-9]+(,[A-Za-z0-9]+)+)\}$/;
 
-function makeURL(route, params) {
-	const path = []
-	for (const component of route.split("/")) {
-		if (optionalRestComponentPattern.test(component)) {
-			const [{}, param] = restComponentPattern.exec(component)
-			if (param in params) {
-				const values = params[param]
-				if (Array.isArray(values)) {
-					for (const value of values) {
-						path.push(encodeURIComponent(value))
-					}
-				} else {
-					throw new Error(`Invalid URL rest parameter: ${param}`)
-				}
-			}
-		} else if (restComponentPattern.test(component)) {
-			const [{}, param] = restComponentPattern.exec(component)
+function parseURLComponent(component, params) {
+	const path = [];
+
+	if (optionalRestComponentPattern.test(component)) {
+		const [{}, param] = restComponentPattern.exec(component)
+		if (param in params) {
 			const values = params[param]
 			if (Array.isArray(values)) {
 				for (const value of values) {
@@ -36,19 +26,48 @@ function makeURL(route, params) {
 			} else {
 				throw new Error(`Invalid URL rest parameter: ${param}`)
 			}
-		} else if (componentPattern.test(component)) {
-			const [{}, param] = componentPattern.exec(component)
-			const value = params[param]
-			if (typeof value === "string") {
+		}
+	} else if (restComponentPattern.test(component)) {
+		const [{}, param] = restComponentPattern.exec(component)
+		const values = params[param]
+		if (Array.isArray(values)) {
+			for (const value of values) {
 				path.push(encodeURIComponent(value))
-			} else {
-				throw new Error(`Invalid URL parameter: ${param}`)
 			}
 		} else {
-			path.push(encodeURIComponent(component))
+			throw new Error(`Invalid URL rest parameter: ${param}`)
+		}
+	} else if (componentPattern.test(component)) {
+		const [{}, param] = componentPattern.exec(component)
+		const value = params[param]
+		if (typeof value === "string") {
+			path.push(encodeURIComponent(value))
+		} else {
+			throw new Error(`Invalid URL parameter: ${param}`)
+		}
+	} else {
+		path.push(encodeURIComponent(component))
+	}
+
+	return path.join("/");
+}
+
+function makeURL(route, params) {
+	const path = []
+	let queryPath = [];
+
+	for (const component of route.split("/")) {		
+		if (queryComponentPattern.test(component)) {
+			const [{}, param, queryParams] = queryComponentPattern.exec(component);
+			
+			path.push(parseURLComponent(param, params));
+			queryPath = queryParams.split(",").map((queryParam) => `${queryParam}=${encodeURIComponent(params[queryParam])}`);
+		} else {
+			path.push(parseURLComponent(component, params))
 		}
 	}
-	return path.join("/")
+
+	return [path.join("/"), queryPath.join("&")].join("?");
 }
 
 function parseHeaders(headers) {
@@ -67,7 +86,7 @@ async function clientFetch(method, route, params, headers, body) {
 	}
 
 	const url = makeURL(route, params)
-	const res = await fetch(url, init)
+	const res = await fetch((process.env.NEXT_BASE_URL || '') + url, init)
 	if (
 		res.status !== StatusCodes.OK &&
 		res.status !== StatusCodes.NOT_MODIFIED
