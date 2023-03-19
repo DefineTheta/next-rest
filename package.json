@@ -1,6 +1,6 @@
 {
 	"name": "@theta-cubed/next-rest",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"type": "module",
 	"description": "Typesafe REST APIs for Next.js",
 	"files": [
