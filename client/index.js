@@ -10,7 +10,7 @@ export class ClientError extends Error {
 const optionalRestComponentPattern = /\[\[\.\.\.(.+)\]\]^$/
 const restComponentPattern = /\[\.\.\.(.+)\]^$/
 const componentPattern = /^\[(.+)\]$/
-const queryComponentPattern = /^(\[*[A-Za-z]+\]*)\?\{([A-Za-z0-9]+(,[A-Za-z0-9]+)+)\}$/;
+const queryComponentPattern = /^(\[*[A-Za-z]+\]*)\?\{([A-Za-z0-9]+(,[A-Za-z0-9]+)*)\}$/;
 
 function parseURLComponent(component, params) {
 	const path = [];
@@ -85,7 +85,7 @@ async function clientFetch(method, route, params, headers, body) {
 		init.body = JSON.stringify(body)
 	}
 
-	const url = makeURL(route, params)
+	const url = makeURL(route, params);
 	const res = await fetch((process.env.NEXT_BASE_URL || '') + url, init)
 	if (
 		res.status !== StatusCodes.OK &&
